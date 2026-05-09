@@ -5,5 +5,5 @@ pillow>=11.0.0
 numpy>=2.0.0
 joblib>=1.4.0
 scikit-learn>=1.5.0
-# tensorflow==2.16.1   # uncomment ถ้าใช้ Keras/CNN
-torch>=2.1.0         # uncomment ถ้าใช้ PyTorch
+torch>=2.0.0
+# tensorflow>=2.15.0   # uncomment ถ้าใช้ Keras .h5

@@ -32,7 +32,8 @@ async def upload_model(file: UploadFile = File(...)):
     # Hot-reload: reset singleton ใน predict router
     import routers.predict as pred_router
     try:
-        pred_router._model      = pred_router.load_model_file(dest)
+        # ต้อง unpack tuple (model, type) ออกมา
+        pred_router._model, pred_router._model_type = pred_router.load_model_file(dest)
         pred_router._model_name = filename
         loaded = True
         msg    = f"โหลด model '{filename}' สำเร็จ"

@@ -3,269 +3,489 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin — Thai Digit Classifier</title>
+  <title>Intelligence Hub — Admin Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
   <style>
     :root {
-      --bg: #0a0a0f; --surface: #12121a; --border: #1e1e2e;
-      --accent: #7c6af7; --accent2: #f97316; --green: #22c55e;
-      --red: #ef4444; --text: #e2e8f0; --muted: #64748b;
-      --font: 'IBM Plex Sans Thai', sans-serif;
-      --mono: 'IBM Plex Mono', monospace;
+      --bg: #0c0e14;
+      --surface: rgba(23, 25, 35, 0.7);
+      --border: rgba(255, 255, 255, 0.08);
+      --accent: #6366f1;
+      --accent-soft: rgba(99, 102, 241, 0.1);
+      --accent-glow: rgba(99, 102, 241, 0.3);
+      --secondary: #06b6d4;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --error: #ef4444;
+      --glass: blur(16px);
+      --radius-xl: 32px;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --spring: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
 
-    header { padding: 18px 32px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface); }
-    .logo { display: flex; align-items: center; gap: 10px; }
-    .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
-    .logo-text { font-size: 15px; font-weight: 600; letter-spacing: .04em; }
-    nav a { color: var(--muted); text-decoration: none; font-size: 14px; margin-left: 24px; transition: color .2s; }
-    nav a:hover, nav a.active { color: var(--text); }
-    nav a.active { border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+    
+    body {
+      background: var(--bg);
+      background-image: 
+        radial-gradient(circle at 100% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 0% 100%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
+      color: var(--text-main);
+      font-family: 'Outfit', 'IBM Plex Sans Thai', sans-serif;
+      min-height: 100vh;
+    }
 
-    main { max-width: 780px; margin: 0 auto; padding: 48px 20px; display: grid; gap: 24px; }
-    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; }
-    .panel-title { font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
+    /* Floating Navbar */
+    header {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 48px);
+      max-width: 1100px;
+      background: rgba(15, 17, 26, 0.8);
+      backdrop-filter: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
 
-    /* Active model card */
-    .active-model { display: flex; align-items: center; gap: 16px; padding: 18px; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; }
-    .model-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(124,106,247,.15); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
-    .model-info .model-name { font-family: var(--mono); font-size: 14px; font-weight: 600; }
-    .model-info .model-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
-    .status-pill { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; }
-    .status-pill.online { background: rgba(34,197,94,.15); color: var(--green); }
-    .status-pill.offline { background: rgba(239,68,68,.15); color: var(--red); }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: white;
+    }
 
-    /* Upload zone */
-    .upload-zone {
-      border: 2px dashed var(--border); border-radius: 16px;
-      padding: 36px 24px; text-align: center;
-      cursor: pointer; transition: all .2s; margin-bottom: 16px;
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--secondary));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+    }
+
+    .logo-text { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+
+    nav { display: flex; gap: 4px; }
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 12px;
+      transition: var(--spring);
+    }
+    nav a:hover { color: white; background: rgba(255,255,255,0.05); }
+    nav a.active { color: white; background: var(--accent-soft); }
+
+    /* Dashboard Layout */
+    main {
+      padding-top: 120px;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding-bottom: 80px;
+      display: grid;
+      gap: 24px;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .dashboard-header { margin-bottom: 24px; animation: fadeIn 0.8s var(--spring); }
+    .dashboard-title { font-size: 36px; font-weight: 700; margin-bottom: 8px; }
+    .dashboard-subtitle { color: var(--text-muted); font-size: 16px; }
+
+    /* Cards */
+    .glass-card {
+      background: var(--surface);
+      backdrop-filter: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      animation: fadeIn 0.8s var(--spring);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Model Status Display */
+    .status-panel {
+      display: grid;
+      grid-template-columns: 80px 1fr auto;
+      gap: 24px;
+      align-items: center;
+      padding: 24px;
+      background: rgba(255,255,255,0.02);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+    }
+
+    .status-icon-wrap {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, var(--accent), var(--secondary));
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .status-details h2 { font-family: 'IBM Plex Mono', monospace; font-size: 20px; margin-bottom: 4px; }
+    .status-details p { color: var(--text-muted); font-size: 14px; }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 99px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .badge-active { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-empty { background: rgba(239, 68, 68, 0.15); color: var(--error); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+    /* Upload Zone */
+    .upload-container {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 60px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: var(--spring);
       position: relative;
     }
-    .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(124,106,247,.05); }
-    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-    .upload-icon { font-size: 36px; margin-bottom: 10px; }
-    .upload-main { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-    .upload-sub { font-size: 13px; color: var(--muted); }
-    .upload-file-name { margin-top: 10px; font-family: var(--mono); font-size: 13px; color: var(--accent); display: none; }
+    .upload-container:hover, .upload-container.dragover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .upload-container input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
-    .btn-upload { width: 100%; border: none; border-radius: 12px; font-family: var(--font); font-size: 15px; font-weight: 600; padding: 14px; cursor: pointer; background: var(--accent); color: white; box-shadow: 0 4px 20px rgba(124,106,247,.35); transition: all .15s; }
-    .btn-upload:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(124,106,247,.5); }
-    .btn-upload:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .upload-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.6; }
+    .upload-text { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    .upload-hint { font-size: 14px; color: var(--text-muted); }
 
-    /* Progress */
-    .upload-progress { margin-top: 14px; display: none; }
-    .progress-bar { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
-    .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--green)); transition: width .4s; }
-    .progress-text { font-size: 12px; color: var(--muted); margin-top: 6px; font-family: var(--mono); }
+    .selected-file {
+      margin-top: 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      color: var(--accent);
+    }
 
-    /* Result banner */
-    .upload-result { display: none; margin-top: 14px; padding: 14px 16px; border-radius: 12px; font-size: 14px; }
-    .upload-result.success { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); color: var(--green); }
-    .upload-result.error   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.25);  color: var(--red); }
+    .btn-action {
+      width: 100%;
+      height: 60px;
+      margin-top: 24px;
+      border-radius: var(--radius-md);
+      border: none;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: var(--spring);
+    }
+    .btn-primary { background: var(--accent); color: white; box-shadow: 0 10px 30px var(--accent-glow); }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 15px 40px var(--accent-glow); }
+    .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
 
-    /* Model list */
-    .model-list { display: grid; gap: 10px; }
-    .model-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; }
-    .model-row-name { font-family: var(--mono); font-size: 13px; flex: 1; word-break: break-all; }
-    .model-row-badge { font-size: 11px; background: rgba(124,106,247,.2); color: var(--accent); padding: 3px 9px; border-radius: 99px; flex-shrink: 0; }
-    .btn-del { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; transition: all .15s; }
-    .btn-del:hover { border-color: var(--red); color: var(--red); }
-    .empty-list { color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0; }
+    /* Progress UI */
+    .progress-bar-wrap { margin-top: 24px; display: none; }
+    .progress-track { height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; overflow: hidden; }
+    .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--secondary)); transition: width 0.3s; }
+    .progress-label { display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; }
 
-    footer { padding: 16px 32px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); text-align: center; }
+    /* Model Repository */
+    .model-grid { display: grid; gap: 12px; }
+    .model-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 24px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      transition: var(--spring);
+    }
+    .model-card:hover { border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.04); }
+    
+    .model-filename { flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .model-tag { font-size: 11px; font-weight: 700; padding: 4px 10px; background: var(--accent-soft); color: var(--accent); border-radius: 6px; }
+
+    .btn-delete {
+      width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: var(--spring);
+    }
+    .btn-delete:hover { background: rgba(239, 68, 68, 0.1); color: var(--error); border-color: var(--error); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: var(--surface); backdrop-filter: var(--glass); border: 1px solid var(--border);
+      padding: 14px 28px; border-radius: 16px; font-size: 15px; font-weight: 600;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4); opacity: 0; transition: var(--spring); z-index: 2000;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    footer { text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px; opacity: 0.6; }
+
+    @media (max-width: 800px) {
+      .status-panel { grid-template-columns: 1fr; text-align: center; justify-items: center; }
+      header { top: 12px; }
+      main { padding-top: 100px; }
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">
-    <div class="logo-dot"></div>
-    <span class="logo-text">Thai Digit · ๒๑–๒๕</span>
-  </div>
+  <a href="/" class="logo">
+    <div class="logo-icon">A</div>
+    <span class="logo-text">System Hub</span>
+  </a>
   <nav>
-    <a href="/collect">เก็บข้อมูล</a>
-    <a href="/">Predict</a>
-    <a href="/admin" class="active">Admin</a>
+    <a href="/">Predictor</a>
+    <a href="/collect">Collector</a>
+    <a href="/admin" class="active">Dashboard</a>
   </nav>
 </header>
 
 <main>
+  <div class="dashboard-header">
+    <h1 class="dashboard-title">Intelligence Control</h1>
+    <p class="dashboard-subtitle">บริหารจัดการ Neural Engine และคลังโมเดลความรู้ไทยดิจิทัล</p>
+  </div>
 
-  <!-- Current Model -->
-  <div class="panel">
-    <div class="panel-title">Model ที่ใช้งานอยู่</div>
-    <div class="active-model" id="activeModel">
-      <div class="model-icon">🤖</div>
-      <div class="model-info">
-        <div class="model-name" id="activeModelName">กำลังโหลด...</div>
-        <div class="model-sub">ใช้งานอยู่ในระบบ Predict</div>
+  <!-- Status Section -->
+  <section class="glass-card">
+    <div class="section-label">Active Neural Engine</div>
+    <div class="status-panel">
+      <div class="status-icon-wrap">🧠</div>
+      <div class="status-details">
+        <h2 id="activeModelName">กำลังเชื่อมต่อ...</h2>
+        <p>โมเดลหลักที่ใช้ในการวิเคราะห์และจำแนกข้อมูลในปัจจุบัน</p>
       </div>
-      <div class="status-pill" id="statusPill">
-        <div class="status-dot"></div>
-        <span id="statusText">—</span>
+      <div id="statusBadge" class="status-badge badge-empty">
+        <span id="statusText">System Offline</span>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Upload Model -->
-  <div class="panel">
-    <div class="panel-title">อัปโหลด Model ใหม่</div>
-    <div class="upload-zone" id="uploadZone">
-      <input type="file" id="fileInput" accept=".pkl,.joblib,.h5,.pt" onchange="onFileSelect(event)"/>
-      <div class="upload-icon">📦</div>
-      <div class="upload-main">คลิกหรือลากไฟล์มาวาง</div>
-      <div class="upload-sub">รองรับ .pkl · .joblib · .h5 · .pt</div>
-      <div class="upload-file-name" id="fileNameDisplay"></div>
+  <!-- Upload Section -->
+  <section class="glass-card">
+    <div class="section-label">Deployment</div>
+    <p style="font-size: 15px; color: var(--text-muted); margin-bottom: 24px">อัปโหลดโมเดลใหม่เข้าสู่ระบบ เพื่อเพิ่มประสิทธิภาพในการเรียนรู้</p>
+    
+    <div class="upload-container" id="dropArea">
+      <input type="file" id="fileInput" accept=".pt,.pkl,.h5" onchange="onFileSelect(event)">
+      <div class="upload-icon">📤</div>
+      <div class="upload-text">Drag & Drop Model File</div>
+      <div class="upload-hint">PyTorch (.pt) · Keras (.h5) · Scikit-learn (.pkl)</div>
+      <div id="fileDisplay" class="selected-file" style="display:none"></div>
     </div>
 
-    <button class="btn-upload" id="uploadBtn" disabled onclick="uploadModel()">📤 อัปโหลดและเปิดใช้งาน</button>
+    <button class="btn-action btn-primary" id="deployBtn" disabled onclick="deployModel()">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"></polyline><line x1="12" y1="12" x2="12" y2="21"></line><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path><polyline points="16 16 12 12 8 16"></polyline></svg>
+      Deploy to Production
+    </button>
 
-    <div class="upload-progress" id="uploadProgress">
-      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-      <div class="progress-text" id="progressText">กำลังอัปโหลด...</div>
+    <div class="progress-bar-wrap" id="deployProgress">
+      <div class="progress-track"><div class="progress-fill" id="progressBar"></div></div>
+      <div class="progress-label">
+        <span id="progressStatus">Uploading...</span>
+        <span id="progressPct">0%</span>
+      </div>
     </div>
+  </section>
 
-    <div class="upload-result" id="uploadResult"></div>
-  </div>
-
-  <!-- Model History -->
-  <div class="panel">
-    <div class="panel-title">ประวัติ Model</div>
-    <div class="model-list" id="modelList">
-      <div class="empty-list">ยังไม่มี model ในระบบ</div>
+  <!-- Repository Section -->
+  <section class="glass-card">
+    <div class="section-label">Intelligence Repository</div>
+    <div class="model-grid" id="modelList">
+      <!-- Models JS -->
     </div>
-  </div>
-
+  </section>
 </main>
 
-<footer>Thai Digit Admin · AIE322 Supervised ML · กลุ่มเลข ๒๑–๒๕</footer>
+<div id="toast" class="toast">Deployment complete!</div>
+
+<footer>
+  &copy; 2026 Thai Digit Admin · Secure Intelligence Hub · AIE322 Project
+</footer>
 
 <script>
 const API = '';
 let selectedFile = null;
 
-// ── Drag & Drop ─────────────────────────────────────────────────────────────
-const zone = document.getElementById('uploadZone');
-zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag'); });
-zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
-zone.addEventListener('drop', e => {
-  e.preventDefault(); zone.classList.remove('drag');
-  const f = e.dataTransfer.files[0];
-  if (f) setFile(f);
+// UI Handlers
+const dropArea = document.getElementById('dropArea');
+dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.classList.add('dragover'); });
+dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
+dropArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropArea.classList.remove('dragover');
+  if(e.dataTransfer.files[0]) updateFile(e.dataTransfer.files[0]);
 });
 
-function onFileSelect(e) { setFile(e.target.files[0]); }
+function onFileSelect(e) { if(e.target.files[0]) updateFile(e.target.files[0]); }
 
-function setFile(f) {
-  selectedFile = f;
-  const display = document.getElementById('fileNameDisplay');
-  display.textContent = `📄 ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
-  display.style.display = 'block';
-  document.getElementById('uploadBtn').disabled = false;
-  hideResult();
+function updateFile(file) {
+  selectedFile = file;
+  const chip = document.getElementById('fileDisplay');
+  chip.textContent = `📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+  chip.style.display = 'inline-flex';
+  document.getElementById('deployBtn').disabled = false;
 }
 
-// ── Upload ──────────────────────────────────────────────────────────────────
-async function uploadModel() {
-  if (!selectedFile) return;
-  const btn = document.getElementById('uploadBtn');
-  btn.disabled = true; btn.textContent = '⏳ กำลังอัปโหลด...';
+function notify(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
 
-  const progress = document.getElementById('uploadProgress');
-  const fill     = document.getElementById('progressFill');
-  const pText    = document.getElementById('progressText');
-  progress.style.display = 'block';
+// Data Logic
+async function deployModel() {
+  if(!selectedFile) return;
+  const btn = document.getElementById('deployBtn');
+  const progressWrap = document.getElementById('deployProgress');
+  const bar = document.getElementById('progressBar');
+  const pct = document.getElementById('progressPct');
+  const status = document.getElementById('progressStatus');
 
-  // Simulate progress
+  btn.disabled = true;
+  progressWrap.style.display = 'block';
+
   let p = 0;
   const iv = setInterval(() => {
-    p = Math.min(p + Math.random() * 18, 88);
-    fill.style.width = p + '%';
-  }, 200);
+    p = Math.min(p + Math.random() * 10, 96);
+    bar.style.width = p + '%';
+    pct.textContent = Math.floor(p) + '%';
+  }, 120);
 
   try {
     const fd = new FormData();
     fd.append('file', selectedFile);
-    const res  = await fetch(`${API}/api/admin/upload-model`, { method: 'POST', body: fd });
+    const res = await fetch(`${API}/api/admin/upload-model`, { method: 'POST', body: fd });
     const data = await res.json();
 
-    clearInterval(iv); fill.style.width = '100%'; pText.textContent = 'เสร็จสิ้น!';
+    clearInterval(iv);
+    bar.style.width = '100%';
+    pct.textContent = '100%';
+    status.textContent = 'Deployment complete!';
 
-    if (!res.ok) throw new Error(data.detail || 'อัปโหลดไม่สำเร็จ');
-
-    showResult(data.loaded
-      ? `✅ ${data.message}`
-      : `⚠️ บันทึกไฟล์แล้ว แต่โหลด model ไม่สำเร็จ: ${data.message}`,
-      data.loaded);
-
-    loadModelInfo(); loadModelList();
+    if(!res.ok) throw new Error(data.detail || 'Deployment Failed');
+    
+    notify(data.loaded ? 'Model active on production!' : 'Saved with caveats');
+    loadInfo();
+    loadList();
+    
     selectedFile = null;
+    document.getElementById('fileDisplay').style.display = 'none';
     document.getElementById('fileInput').value = '';
-    document.getElementById('fileNameDisplay').style.display = 'none';
   } catch (err) {
-    clearInterval(iv); fill.style.width = '0%';
-    showResult('❌ ' + err.message, false);
+    clearInterval(iv);
+    bar.style.width = '0%';
+    notify('Error: ' + err.message);
   } finally {
-    setTimeout(() => { progress.style.display = 'none'; fill.style.width = '0%'; }, 2000);
-    btn.disabled = false; btn.textContent = '📤 อัปโหลดและเปิดใช้งาน';
+    setTimeout(() => { progressWrap.style.display = 'none'; btn.disabled = false; status.textContent = 'Uploading...'; }, 2000);
   }
 }
 
-function showResult(msg, success) {
-  const el = document.getElementById('uploadResult');
-  el.textContent = msg;
-  el.className   = `upload-result ${success ? 'success' : 'error'}`;
-  el.style.display = 'block';
-}
-function hideResult() { document.getElementById('uploadResult').style.display = 'none'; }
-
-// ── Model Info ──────────────────────────────────────────────────────────────
-async function loadModelInfo() {
+async function loadInfo() {
   try {
-    const res  = await fetch(`${API}/api/predict/model-info`);
+    const res = await fetch(`${API}/api/predict/model-info`);
     const data = await res.json();
-    document.getElementById('activeModelName').textContent = data.model_name;
-    const pill = document.getElementById('statusPill');
-    const txt  = document.getElementById('statusText');
-    if (data.model_loaded) {
-      pill.className = 'status-pill online'; txt.textContent = 'Online';
+    document.getElementById('activeModelName').textContent = data.model_name || 'No Model Found';
+    const badge = document.getElementById('statusBadge');
+    const text = document.getElementById('statusText');
+    
+    if(data.model_loaded) {
+      badge.className = 'status-badge badge-active';
+      text.textContent = 'Engine Active';
     } else {
-      pill.className = 'status-pill offline'; txt.textContent = 'ไม่มี model';
+      badge.className = 'status-badge badge-empty';
+      text.textContent = 'No Engine';
     }
-  } catch {}
+  } catch(e) {}
 }
 
-// ── Model List ──────────────────────────────────────────────────────────────
-async function loadModelList() {
+async function loadList() {
   try {
-    const res  = await fetch(`${API}/api/admin/models`);
+    const res = await fetch(`${API}/api/admin/models`);
     const data = await res.json();
     const list = document.getElementById('modelList');
-    if (!data.models.length) { list.innerHTML = '<div class="empty-list">ยังไม่มี model ในระบบ</div>'; return; }
+    
+    if(!data.models.length) {
+      list.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted)">Empty Repository</div>';
+      return;
+    }
+
     list.innerHTML = data.models.map((name, i) => `
-      <div class="model-row">
-        <div class="model-row-name">${name}</div>
-        ${i === 0 ? '<span class="model-row-badge">ล่าสุด</span>' : ''}
-        <button class="btn-del" onclick="deleteModel('${name}')">🗑️</button>
-      </div>`).join('');
-  } catch {}
+      <div class="model-card">
+        <div class="model-filename">${name}</div>
+        ${i === 0 ? '<div class="model-tag">CURRENT</div>' : ''}
+        <button class="btn-delete" onclick="deleteModel('${name}')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+        </button>
+      </div>
+    `).join('');
+  } catch(e) {}
 }
 
 async function deleteModel(name) {
-  if (!confirm(`ลบ ${name} ใช่ไหม?`)) return;
+  if(!confirm(`Confirm removal of ${name}?`)) return;
   try {
     await fetch(`${API}/api/admin/models/${encodeURIComponent(name)}`, { method: 'DELETE' });
-    loadModelList(); loadModelInfo();
-  } catch {}
+    notify('Model removed from storage');
+    loadList();
+    loadInfo();
+  } catch(e) {}
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────────
-loadModelInfo(); loadModelList();
+loadInfo();
+loadList();
 </script>
 </body>
 </html>
