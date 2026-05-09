@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>เก็บข้อมูล — Thai Digit Collector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:       #0a0a0f;
+      --surface:  #12121a;
+      --border:   #1e1e2e;
+      --accent:   #7c6af7;
+      --accent2:  #f97316;
+      --green:    #22c55e;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --font:     'IBM Plex Sans Thai', sans-serif;
+      --mono:     'IBM Plex Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 12px var(--accent);
+    }
+    .logo-text { font-size: 15px; font-weight: 600; letter-spacing: 0.04em; }
+    nav a {
+      color: var(--muted); text-decoration: none; font-size: 14px;
+      margin-left: 24px; transition: color .2s;
+    }
+    nav a:hover, nav a.active { color: var(--text); }
+    nav a.active { border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+
+    /* ── MAIN ── */
+    main {
+      max-width: 1200px; width: 100%;
+      margin: 0 auto; padding: 40px 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      align-items: start;
+    }
+
+    /* ── PANEL (card) ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+    }
+    .panel-title {
+      font-size: 13px; font-weight: 600;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 20px;
+    }
+
+    /* ── LABEL SELECTOR ── */
+    .label-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+      margin-bottom: 20px;
+    }
+    .label-btn {
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 12px;
+      font-family: var(--font); font-size: 20px;
+      padding: 12px 6px; cursor: pointer; transition: all .15s;
+      text-align: center;
+    }
+    .label-btn:hover { border-color: var(--accent); color: var(--text); }
+    .label-btn.selected {
+      background: var(--accent); border-color: var(--accent);
+      color: white; font-weight: 700;
+      box-shadow: 0 0 20px rgba(124,106,247,.4);
+    }
+
+    /* ── CANVAS ── */
+    .canvas-wrap {
+      position: relative; margin-bottom: 16px;
+    }
+    #drawCanvas {
+      width: 100%; aspect-ratio: 1;
+      border-radius: 16px;
+      background: #fff;
+      cursor: crosshair;
+      touch-action: none;
+      display: block;
+      border: 2px solid transparent;
+      transition: border-color .2s;
+    }
+    #drawCanvas.active { border-color: var(--accent); }
+    .canvas-label-badge {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(0,0,0,.6); backdrop-filter: blur(8px);
+      color: white; font-size: 28px; font-weight: 700;
+      padding: 4px 14px; border-radius: 10px;
+      pointer-events: none;
+      opacity: 0; transition: opacity .2s;
+    }
+    .canvas-label-badge.show { opacity: 1; }
+
+    /* ── BUTTONS ── */
+    .btn-row { display: flex; gap: 10px; }
+    .btn {
+      flex: 1; border: none; border-radius: 12px;
+      font-family: var(--font); font-size: 15px; font-weight: 600;
+      padding: 13px; cursor: pointer; transition: all .15s;
+    }
+    .btn-save {
+      background: var(--accent); color: white;
+      box-shadow: 0 4px 20px rgba(124,106,247,.35);
+    }
+    .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(124,106,247,.5); }
+    .btn-save:active { transform: translateY(0); }
+    .btn-save:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .btn-clear { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .btn-clear:hover { color: var(--text); border-color: var(--muted); }
+    .btn-undo { background: var(--bg); color: var(--muted); border: 1px solid var(--border); flex: 0 0 auto; padding: 13px 18px; }
+    .btn-undo:hover { color: var(--accent2); border-color: var(--accent2); }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--green); color: #000; font-weight: 600;
+      padding: 12px 24px; border-radius: 50px; font-size: 14px;
+      opacity: 0; transition: all .3s; pointer-events: none; white-space: nowrap;
+      z-index: 999;
+    }
+    #toast.error { background: #ef4444; color: white; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── STATS PANEL ── */
+    .stat-row {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 14px;
+    }
+    .stat-label { font-size: 22px; width: 36px; text-align: center; }
+    .stat-right { flex: 1; }
+    .stat-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+    .stat-name { font-size: 13px; color: var(--muted); }
+    .stat-count { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+    .stat-bar { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .stat-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width .4s ease; }
+    .stat-fill.done { background: var(--green); }
+
+    .total-box {
+      border-top: 1px solid var(--border); padding-top: 16px; margin-top: 4px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .total-label { font-size: 13px; color: var(--muted); }
+    .total-num { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+
+    /* ── WRITER INPUT ── */
+    .field { margin-bottom: 16px; }
+    .field label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; letter-spacing: .06em; text-transform: uppercase; }
+    .field input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px; color: var(--text);
+      font-family: var(--font); font-size: 14px; outline: none;
+      transition: border-color .2s;
+    }
+    .field input:focus { border-color: var(--accent); }
+
+    /* ── STATUS LINE ── */
+    .status-line {
+      font-size: 12px; color: var(--muted); margin-top: 10px; min-height: 18px;
+      font-family: var(--mono);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 16px 32px; border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted); text-align: center;
+    }
+
+    @media (max-width: 700px) {
+      main { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <span class="logo-text">Thai Digit · ๒๑–๒๕</span>
+  </div>
+  <nav>
+    <a href="/collect" class="active">เก็บข้อมูล</a>
+    <a href="/">Predict</a>
+    <a href="/admin">Admin</a>
+  </nav>
+</header>
+
+<main>
+  <!-- ── LEFT: DRAW ── -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">เลือก Label</div>
+      <div class="label-grid" id="labelGrid"></div>
+
+      <div class="field">
+        <label>ชื่อผู้เขียน (optional)</label>
+        <input type="text" id="writerInput" placeholder="เช่น สมชาย" maxlength="30"/>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="drawCanvas" width="600" height="600"></canvas>
+        <div class="canvas-label-badge" id="badge"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-save" id="saveBtn" disabled onclick="saveSample()">💾 บันทึก</button>
+        <button class="btn btn-clear" onclick="clearCanvas()">ล้าง</button>
+        <button class="btn btn-undo" onclick="undoLast()" title="ลบรูปล่าสุด">↩</button>
+      </div>
+      <div class="status-line" id="statusLine">← เลือก label ก่อนเขียน</div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: STATS ── -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">สถิติ Dataset</div>
+      <div id="statsContainer"></div>
+      <div class="total-box">
+        <span class="total-label">รวมทั้งหมด</span>
+        <span class="total-num" id="totalCount">—</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+<footer>Thai Digit Collector · AIE322 Supervised ML · กลุ่มเลข ๒๑–๒๕</footer>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const API      = '';  // same origin
+const LABELS   = ['๒๑','๒๒','๒๓','๒๔','๒๕'];
+const TARGET   = 50;
+
+// ── State ──────────────────────────────────────────────────────────────────
+let selectedLabel = null;
+let drawing       = false;
+let hasDrawing    = false;
+
+// ── Canvas ─────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('drawCanvas');
+const ctx    = canvas.getContext('2d');
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.lineWidth = 18;
+ctx.lineCap   = 'round';
+ctx.lineJoin  = 'round';
+ctx.strokeStyle = '#111';
+
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: (cx - r.left) * (canvas.width  / r.width),
+    y: (cy - r.top)  * (canvas.height / r.height),
+  };
+}
+function startDraw(e) {
+  if (!selectedLabel) { showToast('เลือก label ก่อนนะ!', true); return; }
+  drawing = true;
+  hasDrawing = true;
+  ctx.beginPath();
+  const p = getPos(e);
+  ctx.moveTo(p.x, p.y);
+  canvas.classList.add('active');
+  updateSaveBtn();
+}
+function draw(e) {
+  if (!drawing) return;
+  e.preventDefault();
+  const p = getPos(e);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+}
+function stopDraw() { drawing = false; canvas.classList.remove('active'); }
+
+canvas.addEventListener('mousedown',  startDraw);
+canvas.addEventListener('mousemove',  draw);
+canvas.addEventListener('mouseup',    stopDraw);
+canvas.addEventListener('mouseleave', stopDraw);
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove',  draw,      { passive: false });
+canvas.addEventListener('touchend',   stopDraw);
+
+function clearCanvas() {
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  hasDrawing = false;
+  updateSaveBtn();
+  setStatus('ล้างแล้ว — พร้อมเขียนใหม่');
+}
+
+// ── Label Buttons ──────────────────────────────────────────────────────────
+const labelGrid = document.getElementById('labelGrid');
+LABELS.forEach(label => {
+  const btn = document.createElement('button');
+  btn.className = 'label-btn';
+  btn.textContent = label;
+  btn.onclick = () => selectLabel(label);
+  labelGrid.appendChild(btn);
+});
+
+function selectLabel(label) {
+  selectedLabel = label;
+  document.querySelectorAll('.label-btn').forEach(b => {
+    b.classList.toggle('selected', b.textContent === label);
+  });
+  const badge = document.getElementById('badge');
+  badge.textContent = label;
+  badge.classList.add('show');
+  setStatus(`เลือก ${label} แล้ว — วาดเลขไทยในกรอบขาว`);
+  updateSaveBtn();
+  clearCanvas();
+}
+
+function updateSaveBtn() {
+  document.getElementById('saveBtn').disabled = !(selectedLabel && hasDrawing);
+}
+
+// ── Save Sample ────────────────────────────────────────────────────────────
+async function saveSample() {
+  if (!selectedLabel || !hasDrawing) return;
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '⏳ กำลังบันทึก...';
+
+  const imageData = canvas.toDataURL('image/png');
+  const writer    = document.getElementById('writerInput').value.trim() || 'anonymous';
+
+  try {
+    const res = await fetch(`${API}/api/collect/save-sample`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: selectedLabel, image: imageData, writer }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'บันทึกไม่สำเร็จ');
+
+    showToast(`✅ บันทึก ${data.filename} แล้ว`);
+    setStatus(`บันทึก #${data.index} สำเร็จ — ล้างแล้วเขียนต่อได้เลย`);
+    clearCanvas();
+    loadStats();
+  } catch (err) {
+    showToast(err.message, true);
+    setStatus('❌ ' + err.message);
+  } finally {
+    saveBtn.textContent = '💾 บันทึก';
+    updateSaveBtn();
+  }
+}
+
+// ── Undo Last ──────────────────────────────────────────────────────────────
+async function undoLast() {
+  if (!selectedLabel) return;
+  if (!confirm(`ลบรูปล่าสุดของ ${selectedLabel} ใช่ไหม?`)) return;
+  try {
+    const res  = await fetch(`${API}/api/collect/delete-last/${encodeURIComponent(selectedLabel)}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail);
+    showToast(`🗑️ ลบ ${data.deleted} แล้ว`);
+    loadStats();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const res  = await fetch(`${API}/api/stats`);
+    const data = await res.json();
+    renderStats(data);
+  } catch { /* ignore */ }
+}
+
+function renderStats(data) {
+  const container = document.getElementById('statsContainer');
+  container.innerHTML = '';
+
+  LABELS.forEach(label => {
+    const n    = data.counts[label] ?? 0;
+    const pct  = Math.min((n / TARGET) * 100, 100);
+    const done = n >= TARGET;
+
+    container.innerHTML += `
+      <div class="stat-row">
+        <div class="stat-label">${label}</div>
+        <div class="stat-right">
+          <div class="stat-top">
+            <span class="stat-name">${done ? '✅ ครบแล้ว' : `เป้าหมาย ${TARGET}`}</span>
+            <span class="stat-count">${n} รูป</span>
+          </div>
+          <div class="stat-bar">
+            <div class="stat-fill ${done ? 'done' : ''}" style="width:${pct}%"></div>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('totalCount').textContent = `${data.total} รูป`;
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function setStatus(msg) { document.getElementById('statusLine').textContent = msg; }
+
+let toastTimer;
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = isError ? 'error show' : 'show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = isError ? 'error' : ''; }, 2800);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadStats();
+setInterval(loadStats, 15000);  // refresh ทุก 15 วิ
+</script>
+</body>
+</html>

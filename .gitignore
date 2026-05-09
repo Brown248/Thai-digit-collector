@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+dataset/*/
+!dataset/.gitkeep
+models/
+*.pkl
+*.joblib
+*.h5
+*.pt
+.DS_Store

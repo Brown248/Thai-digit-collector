@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Predict — Thai Digit Classifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #12121a; --border: #1e1e2e;
+      --accent: #7c6af7; --accent2: #f97316; --green: #22c55e;
+      --text: #e2e8f0; --muted: #64748b;
+      --font: 'IBM Plex Sans Thai', sans-serif;
+      --mono: 'IBM Plex Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
+
+    header { padding: 18px 32px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface); }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+    .logo-text { font-size: 15px; font-weight: 600; letter-spacing: .04em; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 14px; margin-left: 24px; transition: color .2s; }
+    nav a:hover, nav a.active { color: var(--text); }
+    nav a.active { border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+
+    main { max-width: 860px; margin: 0 auto; padding: 48px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; }
+    .panel-title { font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
+
+    /* Canvas */
+    #drawCanvas { width: 100%; aspect-ratio: 1; border-radius: 16px; background: #fff; cursor: crosshair; touch-action: none; display: block; border: 2px solid var(--border); transition: border-color .2s; }
+    #drawCanvas.active { border-color: var(--accent); }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+    .btn { flex: 1; border: none; border-radius: 12px; font-family: var(--font); font-size: 15px; font-weight: 600; padding: 13px; cursor: pointer; transition: all .15s; }
+    .btn-predict { background: var(--accent); color: white; box-shadow: 0 4px 20px rgba(124,106,247,.35); }
+    .btn-predict:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(124,106,247,.5); }
+    .btn-predict:active { transform: translateY(0); }
+    .btn-predict:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .btn-clear { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .btn-clear:hover { color: var(--text); border-color: var(--muted); }
+
+    /* Result */
+    .result-idle { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; color: var(--muted); font-size: 14px; gap: 12px; }
+    .result-idle svg { opacity: .25; }
+    .result-active { display: none; }
+
+    .pred-number { font-size: 96px; font-weight: 700; color: var(--accent); text-align: center; line-height: 1; margin: 16px 0; text-shadow: 0 0 40px rgba(124,106,247,.5); }
+    .pred-label { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+    .conf-label { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+    .conf-val { font-family: var(--mono); font-weight: 600; color: var(--green); }
+    .conf-bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 20px; }
+    .conf-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--green)); width: 0; transition: width .6s cubic-bezier(.4,0,.2,1); }
+
+    /* All proba */
+    .proba-title { font-size: 12px; color: var(--muted); margin-bottom: 10px; letter-spacing: .06em; text-transform: uppercase; }
+    .proba-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .proba-lbl { font-size: 18px; width: 36px; text-align: center; }
+    .proba-bar-wrap { flex: 1; }
+    .proba-bar { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .proba-fill { height: 100%; border-radius: 99px; background: var(--accent); opacity: .5; transition: width .6s; }
+    .proba-fill.top { background: var(--accent); opacity: 1; }
+    .proba-num { font-family: var(--mono); font-size: 12px; color: var(--muted); width: 42px; text-align: right; }
+
+    .model-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 16px; }
+    .model-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .model-dot.off { background: #ef4444; }
+
+    footer { padding: 16px 32px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); text-align: center; }
+
+    @media (max-width: 700px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <span class="logo-text">Thai Digit · ๒๑–๒๕</span>
+  </div>
+  <nav>
+    <a href="/collect">เก็บข้อมูล</a>
+    <a href="/" class="active">Predict</a>
+    <a href="/admin">Admin</a>
+  </nav>
+</header>
+
+<main>
+  <!-- LEFT: Draw -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">เขียนเลขไทย</div>
+      <canvas id="drawCanvas" width="400" height="400"></canvas>
+      <div class="btn-row">
+        <button class="btn btn-predict" id="predictBtn" disabled onclick="predict()">🔍 ทำนาย</button>
+        <button class="btn btn-clear" onclick="clearCanvas()">ล้าง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Result -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">ผลการทำนาย</div>
+
+      <div class="result-idle" id="resultIdle">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        เขียนเลขแล้วกด <strong>ทำนาย</strong>
+      </div>
+
+      <div class="result-active" id="resultActive">
+        <div class="pred-number" id="predNumber">—</div>
+        <div class="pred-label">ผลการทำนาย</div>
+
+        <div class="conf-label">
+          <span>ความมั่นใจ</span>
+          <span class="conf-val" id="confText">—</span>
+        </div>
+        <div class="conf-bar"><div class="conf-fill" id="confFill"></div></div>
+
+        <div class="proba-title">Probability ทุก class</div>
+        <div id="probaList"></div>
+
+        <div class="model-badge">
+          <div class="model-dot" id="modelDot"></div>
+          <span id="modelName">ไม่ได้โหลด model</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>Thai Digit Classifier · AIE322 Supervised ML · กลุ่มเลข ๒๑–๒๕</footer>
+
+<script>
+const API    = '';
+const LABELS = ['๒๑','๒๒','๒๓','๒๔','๒๕'];
+
+const canvas = document.getElementById('drawCanvas');
+const ctx    = canvas.getContext('2d');
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.lineWidth = 18; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111';
+
+let drawing = false, hasDrawing = false;
+
+function getPos(e) {
+  const r  = canvas.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: (cx - r.left) * (canvas.width / r.width), y: (cy - r.top) * (canvas.height / r.height) };
+}
+function startDraw(e) { drawing = true; hasDrawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); canvas.classList.add('active'); updateBtn(); }
+function draw(e) { if (!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+function stopDraw() { drawing = false; canvas.classList.remove('active'); }
+function clearCanvas() { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); hasDrawing = false; updateBtn(); showIdle(); }
+function updateBtn() { document.getElementById('predictBtn').disabled = !hasDrawing; }
+
+canvas.addEventListener('mousedown',  startDraw);
+canvas.addEventListener('mousemove',  draw);
+canvas.addEventListener('mouseup',    stopDraw);
+canvas.addEventListener('mouseleave', stopDraw);
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove',  draw,      { passive: false });
+canvas.addEventListener('touchend',   stopDraw);
+
+function showIdle() {
+  document.getElementById('resultIdle').style.display   = '';
+  document.getElementById('resultActive').style.display = 'none';
+}
+
+async function predict() {
+  const btn = document.getElementById('predictBtn');
+  btn.textContent = '⏳ กำลังทำนาย...'; btn.disabled = true;
+
+  try {
+    const res  = await fetch(`${API}/api/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: canvas.toDataURL('image/png') }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Prediction failed');
+
+    showResult(data);
+  } catch (err) {
+    alert('❌ ' + err.message);
+  } finally {
+    btn.textContent = '🔍 ทำนาย'; btn.disabled = false;
+  }
+}
+
+function showResult(data) {
+  document.getElementById('resultIdle').style.display   = 'none';
+  document.getElementById('resultActive').style.display = '';
+
+  document.getElementById('predNumber').textContent = data.prediction;
+  document.getElementById('confText').textContent   = `${(data.confidence * 100).toFixed(1)}%`;
+  document.getElementById('confFill').style.width   = `${data.confidence * 100}%`;
+
+  // All proba bars
+  const list = document.getElementById('probaList');
+  list.innerHTML = '';
+  LABELS.forEach(lbl => {
+    const p   = (data.all_proba?.[lbl] ?? 0) * 100;
+    const top = lbl === data.prediction;
+    list.innerHTML += `
+      <div class="proba-row">
+        <div class="proba-lbl">${lbl}</div>
+        <div class="proba-bar-wrap">
+          <div class="proba-bar"><div class="proba-fill ${top ? 'top' : ''}" style="width:${p}%"></div></div>
+        </div>
+        <div class="proba-num">${p.toFixed(1)}%</div>
+      </div>`;
+  });
+
+  // Model badge
+  const loaded = !!data.model_used && data.model_used !== 'ยังไม่ได้โหลด model';
+  document.getElementById('modelDot').className  = 'model-dot' + (loaded ? '' : ' off');
+  document.getElementById('modelName').textContent = data.model_used || 'ไม่มี model';
+}
+
+// Load model info on start
+(async () => {
+  try {
+    const res  = await fetch(`${API}/api/predict/model-info`);
+    const data = await res.json();
+    if (!data.model_loaded) console.warn('No model loaded yet');
+  } catch {}
+})();
+</script>
+</body>
+</html>
